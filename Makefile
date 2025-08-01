@@ -60,6 +60,12 @@ test_rsa_4096_real: rsa_4096_bigint.o rsa_4096_arithmetic.o rsa_4096_montgomery.
 	$(CC) $(CFLAGS) -o test_rsa_4096_real rsa_4096_bigint.o rsa_4096_arithmetic.o rsa_4096_montgomery.o rsa_4096_core.o rsa_4096_tests.o enhanced_tests.o test_rsa_4096_real.c $(LDFLAGS)
 	@echo "✅ Test executable created successfully"
 
+# NEW: 4096-bit specific test as requested by @RSAhardcore
+test_4096_specific: rsa_4096_bigint.o rsa_4096_arithmetic.o rsa_4096_montgomery.o rsa_4096_core.o rsa_4096_tests.o enhanced_tests.o test_4096_specific.c
+	@echo "🔧 Building test_4096_specific..."
+	$(CC) $(CFLAGS) -o test_4096_specific rsa_4096_bigint.o rsa_4096_arithmetic.o rsa_4096_montgomery.o rsa_4096_core.o rsa_4096_tests.o enhanced_tests.o test_4096_specific.c $(LDFLAGS)
+	@echo "✅ 4096-bit specific test executable created successfully"
+
 # FIXED: Enhanced testing targets
 run_basic_tests: rsa_4096
 	@echo "🧪 Running basic verification tests..."
@@ -75,9 +81,11 @@ run_performance_tests: rsa_4096
 	./rsa_4096 benchmark
 	@echo "✅ Performance tests completed"
 
-run_comprehensive_tests: test_rsa_4096_real run_basic_tests run_performance_tests
+run_comprehensive_tests: test_rsa_4096_real test_4096_specific run_basic_tests run_performance_tests
 	@echo "🔍 Running comprehensive real-key tests..."
 	./test_rsa_4096_real
+	@echo "🔍 Running 4096-bit specific tests..."
+	./test_4096_specific
 	@echo "✅ All comprehensive tests completed"
 
 # FIXED: Enhanced debug build
@@ -122,7 +130,7 @@ uninstall:
 # FIXED: Enhanced clean target
 clean:
 	@echo "🧹 Cleaning build artifacts..."
-	@rm -f *.o rsa_4096 test_rsa_4096_real
+	@rm -f *.o rsa_4096 test_rsa_4096_real test_4096_specific
 	@rm -f core vgcore.* *.log
 	@echo "✅ Clean completed!"
 
@@ -143,7 +151,7 @@ help:
 	@echo "  test_rsa_4096_real    - Build test executable"
 	@echo "  run_basic_tests       - Run basic verification tests"
 	@echo "  run_performance_tests - Run performance benchmarks"
-	@echo "  run_comprehensive_tests - Run all tests including real keys"
+	@echo "  run_comprehensive_tests - Run all tests including real keys and 4096-bit"
 	@echo "  memcheck              - Run with memory leak detection"
 	@echo "  static_analysis       - Run static code analysis"
 	@echo "  install               - Install to system (/usr/local/bin)"
