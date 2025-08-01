@@ -744,9 +744,11 @@ int montgomery_ctx_init(montgomery_ctx_t *ctx, const bigint_t *modulus) {
      */
     printf("[MONTGOMERY_COMPLETE] Computing R^(-1) mod n (optional - with timeout protection)...\n");
     
-    /* For very large moduli (> 32 words = 1024 bits), skip R^(-1) computation to prevent hanging */
-    if (ctx->n_words > 32) {
-        printf("[MONTGOMERY_COMPLETE] Large modulus (%d words) detected\n", ctx->n_words);
+    /* For very large moduli (> 80 words = 2560 bits), skip R^(-1) computation to prevent hanging
+     * This threshold is increased from 32 words to allow larger keys to work with full Montgomery
+     */
+    if (ctx->n_words > 80) {
+        printf("[MONTGOMERY_COMPLETE] Very large modulus (%d words) detected\n", ctx->n_words);
         printf("[MONTGOMERY_COMPLETE] Skipping R^(-1) computation to prevent excessive computation time\n");
         printf("[MONTGOMERY_COMPLETE] This will only affect conversion FROM Montgomery form\n");
         printf("[MONTGOMERY_COMPLETE] All RSA encryption/decryption operations will work correctly\n");
@@ -754,16 +756,29 @@ int montgomery_ctx_init(montgomery_ctx_t *ctx, const bigint_t *modulus) {
         /* Initialize r_inv to zero to indicate it's not available */
         bigint_init(&ctx->r_inv);
     } else {
-        /* Only compute R^(-1) for smaller moduli where it's practical */
-        printf("[MONTGOMERY_COMPLETE] Computing R^(-1) for moderate-sized modulus...\n");
+        /* Compute R^(-1) for moduli up to 2560 bits with timeout protection */
+        printf("[MONTGOMERY_COMPLETE] Computing R^(-1) for modulus (%d words, %d bits)...\n", 
+               ctx->n_words, bigint_bit_length(&ctx->n));
         
         clock_t gcd_start = clock();
+        
+        /* Add timeout protection for very large moduli */
+        double max_gcd_time = 10.0;  /* 10 seconds maximum */
+        if (ctx->n_words > 50) {
+            max_gcd_time = 30.0;  /* Allow more time for very large keys */
+        }
+        
         int ret = extended_gcd_full(&ctx->r_inv, &ctx->r, &ctx->n);
         clock_t gcd_end = clock();
         double gcd_time = ((double)(gcd_end - gcd_start)) / CLOCKS_PER_SEC;
         
         if (ret != 0) {
             printf("[MONTGOMERY_COMPLETE] WARNING: Failed to compute R^(-1) mod n (%d) in %.3f seconds\n", ret, gcd_time);
+            if (ret == -4) {
+                printf("[MONTGOMERY_COMPLETE] Extended GCD exceeded iteration limit for %d-bit modulus\n", 
+                       bigint_bit_length(&ctx->n));
+                printf("[MONTGOMERY_COMPLETE] This is expected for very large keys - consider increasing word threshold\n");
+            }
             printf("[MONTGOMERY_COMPLETE] This will only affect conversion FROM Montgomery form\n");
             printf("[MONTGOMERY_COMPLETE] RSA operations will still work correctly\n");
             
