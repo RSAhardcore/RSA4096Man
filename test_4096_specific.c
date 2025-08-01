@@ -27,13 +27,11 @@ int generate_4096_bit_test_modulus(bigint_t *modulus) {
     // Create a large number that simulates the structure of RSA modulus
     // Use a pattern that's more likely to be coprime with 65537
     
-    // Start with a base pattern
-    for (int i = 0; i < 120; i++) { // Use 120 words ≈ 3840 bits
-        uint32_t value = 0x12345678 + i * 0x9ABCDEF;  // Predictable pattern
-        if (i < BIGINT_4096_WORDS) {
-            modulus->words[i] = value;
-            modulus->used = i + 1;
-        }
+    // Start with a base pattern - FIXED: Prevent integer overflow completely
+    for (int i = 0; i < 120 && i < BIGINT_4096_WORDS; i++) { // Use 120 words ≈ 3840 bits
+        uint32_t value = 0x12345678 + (uint32_t)(i * 0x1234);  // FIXED: Much smaller multiplier to prevent overflow
+        modulus->words[i] = value;
+        modulus->used = i + 1;
     }
     
     // Set high-order bits to make it large

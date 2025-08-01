@@ -767,6 +767,8 @@ int montgomery_ctx_init(montgomery_ctx_t *ctx, const bigint_t *modulus) {
         if (ctx->n_words > 50) {
             max_gcd_time = 30.0;  /* Allow more time for very large keys */
         }
+        /* NOTE: Variable declared for future timeout implementation */
+        (void)max_gcd_time;  /* Suppress unused variable warning */
         
         int ret = extended_gcd_full(&ctx->r_inv, &ctx->r, &ctx->n);
         clock_t gcd_end = clock();
