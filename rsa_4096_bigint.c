@@ -344,25 +344,24 @@ int bigint_to_binary(const bigint_t *a, uint8_t *data, size_t data_size, size_t 
 /* ===================== BITWISE/BINARY OPERATIONS - CRITICAL FIXES ===================== */
 
 int bigint_shift_left(bigint_t *r, const bigint_t *a, int bits) {
-    /* TODO: Critical input validation for round-trip safety */
+    /* Critical input validation for round-trip safety */
     if (!r || !a) {
         CHECKPOINT(LOG_ERROR, "NULL pointer in bigint_shift_left");
         return -1;
     }
     
-    bigint_init(r);
     if (bits == 0) {
         bigint_copy(r, a);
         return 0;
     }
     
-    /* TODO: Validate shift amount */
+    /* Validate shift amount */
     if (bits < 0) {
         CHECKPOINT(LOG_ERROR, "Negative shift amount: %d", bits);
         return -2;
     }
     
-    /* FIXME: Potential overflow with very large shift amounts */
+    /* Enhanced overflow protection */
     if (bits > 32 * BIGINT_4096_WORDS) {
         CHECKPOINT(LOG_ERROR, "Shift amount too large: %d", bits);
         return -2;
@@ -371,7 +370,7 @@ int bigint_shift_left(bigint_t *r, const bigint_t *a, int bits) {
     int word_shift = bits / 32;
     int bit_shift = bits % 32;
     
-    /* TODO: Enhanced overflow protection */
+    /* Enhanced overflow protection */
     if (a->used + word_shift + (bit_shift ? 1 : 0) > BIGINT_4096_WORDS) {
         CHECKPOINT(LOG_ERROR, "Left shift would overflow: used=%d, word_shift=%d, bit_shift=%d", 
                   a->used, word_shift, bit_shift);
@@ -380,9 +379,16 @@ int bigint_shift_left(bigint_t *r, const bigint_t *a, int bits) {
     
     VALIDATE_OVERFLOW(a, "bigint_shift_left input");
     
+    /* CRITICAL FIX: Handle in-place operations safely by creating a temporary copy */
+    bigint_t temp;
+    bigint_copy(&temp, a);
+    
+    /* Initialize result to zero */
+    bigint_init(r);
+    
     /* Perform the shift with bounds checking */
-    for (int i = a->used - 1; i >= 0; i--) {
-        uint64_t val = (uint64_t)a->words[i];
+    for (int i = temp.used - 1; i >= 0; i--) {
+        uint64_t val = (uint64_t)temp.words[i];
         
         /* Place the low part */
         int dest_idx = i + word_shift;
@@ -399,7 +405,7 @@ int bigint_shift_left(bigint_t *r, const bigint_t *a, int bits) {
         }
     }
     
-    r->used = a->used + word_shift + (bit_shift ? 1 : 0);
+    r->used = temp.used + word_shift + (bit_shift ? 1 : 0);
     if (r->used > BIGINT_4096_WORDS) {
         CHECKPOINT(LOG_ERROR, "Overflow in shift result, clamping to max");
         r->used = BIGINT_4096_WORDS;
@@ -508,22 +514,36 @@ int bigint_bit_length(const bigint_t *a) {
 /* ===================== ADDITION/SUBTRACTION/MULTIPLICATION - ENHANCED ===================== */
 
 int bigint_add(bigint_t *r, const bigint_t *a, const bigint_t *b) {
-    /* TODO: Critical input validation for round-trip safety */
+    /* Critical input validation for round-trip safety */
     if (!r || !a || !b) {
         CHECKPOINT(LOG_ERROR, "NULL pointer in bigint_add");
         return -1;
     }
     
-    /* TODO: Input validation */
+    /* Input validation */
     VALIDATE_OVERFLOW(a, "bigint_add input a");
     VALIDATE_OVERFLOW(b, "bigint_add input b");
     
     int max_used = (a->used > b->used) ? a->used : b->used;
     uint64_t carry = 0;
     
+    /* CRITICAL FIX: Handle in-place operations safely */
+    bigint_t temp_a, temp_b;
+    const bigint_t *safe_a = a;
+    const bigint_t *safe_b = b;
+    
+    if (r == a) {
+        bigint_copy(&temp_a, a);
+        safe_a = &temp_a;
+    }
+    if (r == b) {
+        bigint_copy(&temp_b, b);
+        safe_b = &temp_b;
+    }
+    
     bigint_init(r);
     
-    /* TODO: Enhanced addition with overflow detection */
+    /* Enhanced addition with overflow detection */
     for (int i = 0; i < max_used || carry; i++) {
         if (i >= BIGINT_4096_WORDS) {
             CHECKPOINT(LOG_ERROR, "Addition overflow: result too large for buffer");
@@ -531,8 +551,8 @@ int bigint_add(bigint_t *r, const bigint_t *a, const bigint_t *b) {
         }
         
         uint64_t sum = carry;
-        if (i < a->used) sum += a->words[i];
-        if (i < b->used) sum += b->words[i];
+        if (i < safe_a->used) sum += safe_a->words[i];
+        if (i < safe_b->used) sum += safe_b->words[i];
         
         r->words[i] = (uint32_t)(sum & 0xFFFFFFFF);
         carry = sum >> 32;
