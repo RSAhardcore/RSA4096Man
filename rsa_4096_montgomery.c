@@ -461,9 +461,9 @@ int extended_gcd_full(bigint_t *result, const bigint_t *a, const bigint_t *m) {
     printf("[EXT_GCD_OPTIMIZED] Starting extended GCD algorithm with enhanced limits\n");
     
     int iteration = 0;
-    /* FIXED: GCD Infinite Loop Prevention - Reduced iteration limits with better progress monitoring */
+    /* FIXED: Reduced iteration debug logging to prevent terminal overflow */
     int max_iterations = 2000;  /* Reduced from 5K for faster timeout - prevents infinite loops */
-    int progress_interval = 100; /* Report progress every 100 iterations - improved monitoring */
+    int progress_interval = 500; /* FIXED: Report progress every 500 iterations (was 100) - prevents terminal overflow */
     
     /* Enhanced progress tracking for early termination - Round-trip Validation Fix */
     int last_r_bits = bigint_bit_length(&r);
@@ -562,16 +562,16 @@ int extended_gcd_full(bigint_t *result, const bigint_t *a, const bigint_t *m) {
             break;
         }
         
-        /* FIXED: Enhanced timeout protection for very slow progress - prevents infinite loops */
-        if (iteration > 500 && r.used > m->used / 2) {
-            printf("[EXT_GCD_OPTIMIZED] WARNING: Slow progress after %d iterations\n", iteration);
+        /* FIXED: More lenient timeout protection - allows more computation for correctness */
+        if (iteration > 1000 && r.used > m->used * 3 / 4) {
+            printf("[EXT_GCD_OPTIMIZED] WARNING: Very slow progress after %d iterations\n", iteration);
             printf("[EXT_GCD_OPTIMIZED] Remainder still has %d words (modulus has %d words)\n", r.used, m->used);
             printf("[EXT_GCD_OPTIMIZED] Terminating to prevent hanging - GCD Infinite Loop Prevention\n");
             break;
         }
         
-        /* FIXED: Additional stagnation detection for large numbers */
-        if (iteration > 200 && stagnation_count > 20) {
+        /* FIXED: More lenient stagnation detection to ensure correct results */
+        if (iteration > 400 && stagnation_count > 40) {
             printf("[EXT_GCD_OPTIMIZED] CRITICAL: Excessive stagnation detected at iteration %d\n", iteration);
             printf("[EXT_GCD_OPTIMIZED] Terminating to prevent infinite loop\n");
             break;
