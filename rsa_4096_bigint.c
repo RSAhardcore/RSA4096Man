@@ -77,9 +77,9 @@ void bigint_normalize(bigint_t *a) {
         a->used--;
     }
     
-    /* TODO: Log significant normalization changes */
-    if (original_used != a->used && original_used - a->used > 1) {
-        printf("[ROUND_TRIP_DEBUG] Normalization: reduced from %d to %d words (removed %d leading zeros)\n", 
+    /* FIXED: Drastically reduced debug logging to prevent terminal overflow - only log extreme normalizations */
+    if (original_used != a->used && original_used - a->used > 100) {
+        printf("[ROUND_TRIP_DEBUG] Extreme normalization: reduced from %d to %d words (removed %d leading zeros)\n", 
                original_used, a->used, original_used - a->used);
     }
     
